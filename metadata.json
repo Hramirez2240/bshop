@@ -1,0 +1,5 @@
+{
+  "name": "BShop - Premium Booking",
+  "description": "A premium, mobile-first barber and salon booking application featuring role-based access, calendar management, and a sleek dark-mode aesthetic.",
+  "requestFramePermissions": []
+}
