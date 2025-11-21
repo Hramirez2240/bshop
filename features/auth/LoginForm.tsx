@@ -21,17 +21,16 @@ export const LoginForm = () => {
 
     setIsLoading(true);
     
-    // Simulate network delay for better UX
     setTimeout(() => {
       let success = false;
       
       if (isRegisterMode) {
         if (!name) {
           setIsLoading(false);
-          return; // Validación básica
+          return;
         }
         register(name, email, role);
-        success = true; // El registro hace auto-login
+        success = true;
       } else {
         success = login(email);
       }
@@ -47,7 +46,6 @@ export const LoginForm = () => {
   const toggleMode = () => {
     setIsRegisterMode(!isRegisterMode);
     setName('');
-    // Mantener el email por comodidad
   };
 
   return (
@@ -65,7 +63,6 @@ export const LoginForm = () => {
           </p>
         </div>
 
-        {/* Role Selector (Only needed for registration usually, but kept for context or implicit filtering if needed later) */}
         {isRegisterMode && (
           <div className="flex p-1 bg-zinc-800 rounded-xl mb-6">
             <button 

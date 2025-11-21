@@ -9,7 +9,6 @@ interface ModalProps {
 }
 
 export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
-  // Prevent body scroll when modal is open
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -30,7 +29,6 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
         role="dialog"
         aria-modal="true"
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800 bg-zinc-900">
           <h3 className="text-lg font-semibold text-white tracking-tight">{title}</h3>
           <button 
@@ -41,7 +39,6 @@ export const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }
           </button>
         </div>
 
-        {/* Body */}
         <div className="p-6">
           {children}
         </div>

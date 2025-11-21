@@ -13,7 +13,6 @@ export const BookingFlow = () => {
   const navigate = useNavigate();
   const { services, barbers, addAppointment, getAppointmentsByDate, currentUser, addToast } = useAppStore();
   
-  // Redirección de seguridad: Estilistas no reservan
   useEffect(() => {
     if (currentUser && currentUser.role === 'BARBER') {
       addToast('Los estilistas no pueden crear reservas desde esta cuenta.', 'error');
@@ -35,15 +34,11 @@ export const BookingFlow = () => {
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
-  // --- Helpers ---
-
-  // Generate next 14 days
   const availableDates = useMemo(() => {
     const today = getStartOfToday();
     return Array.from({ length: 14 }).map((_, i) => addDays(today, i));
   }, []);
 
-  // Generate time slots based on selected date/barber
   const availableSlots = useMemo(() => {
     if (!selectedBarber || !selectedDate) return [];
 
@@ -63,7 +58,6 @@ export const BookingFlow = () => {
         time: timeString,
         available: !takenTimes.has(timeString)
       });
-      // Add interval
       currentTime.setTime(currentTime.getTime() + TIME_SLOT_INTERVAL * 60000);
     }
     return slots;
@@ -92,8 +86,6 @@ export const BookingFlow = () => {
       navigate('/dashboard');
     }, 1500);
   };
-
-  // --- Render Steps ---
 
   const renderServiceStep = () => (
     <div className="grid gap-4 md:grid-cols-2">
@@ -137,7 +129,6 @@ export const BookingFlow = () => {
 
   const renderDateTimeStep = () => (
     <div className="space-y-6">
-      {/* Date Scroller */}
       <div className="space-y-2">
         <label className="text-sm text-zinc-400">Selecciona Fecha</label>
         <div className="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
@@ -162,7 +153,6 @@ export const BookingFlow = () => {
         </div>
       </div>
 
-      {/* Time Grid */}
       <div className="space-y-2">
         <label className="text-sm text-zinc-400">Selecciona Hora</label>
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
@@ -264,7 +254,6 @@ export const BookingFlow = () => {
           <span className="text-sm text-zinc-500">Paso {currentStep + 1} de 4</span>
         </div>
         
-        {/* Progress Bar */}
         <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
           <div 
             className="h-full bg-gold-500 transition-all duration-500 ease-out"

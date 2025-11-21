@@ -4,7 +4,7 @@ interface CardProps {
   children: React.ReactNode;
   className?: string;
   onClick?: () => void;
-  role?: string; // for accessibility
+  role?: string;
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = '', onClick, role }) => {

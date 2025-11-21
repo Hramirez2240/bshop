@@ -24,7 +24,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-zinc-100 pb-20 md:pb-0">
-      {/* Desktop Header */}
       <header className="hidden md:flex items-center justify-between px-8 py-6 border-b border-zinc-800/50 sticky top-0 z-50 bg-zinc-950/80 backdrop-blur-md">
         <div className="flex items-center gap-3">
           <div className="bg-gold-500/20 p-2 rounded-lg border border-gold-500/20">
@@ -36,7 +35,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         {currentUser && (
           <nav className="flex items-center gap-8">
             <Link to="/dashboard" className="text-sm font-medium hover:text-gold-500 transition-colors">Mi Agenda</Link>
-            {/* Solo clientes pueden ver el botón de reservar */}
             {isClient && (
               <Link to="/booking" className="text-sm font-medium hover:text-gold-500 transition-colors">Reservar Cita</Link>
             )}
@@ -52,7 +50,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         )}
       </header>
 
-      {/* Mobile Header */}
       <header className="md:hidden flex items-center justify-between px-4 py-4 sticky top-0 z-50 bg-zinc-950/90 backdrop-blur-md border-b border-zinc-800/50">
          <div className="flex items-center gap-2">
           <Sparkles className="text-gold-500" size={20} />
@@ -78,7 +75,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
         <nav className="md:hidden fixed bottom-0 left-0 right-0 h-16 bg-zinc-900/90 backdrop-blur-lg border-t border-zinc-800 flex justify-around items-center px-2 z-50">
           <NavLink to="/dashboard" icon={LayoutDashboard} label="Inicio" active={location.pathname === '/dashboard'} />
           
-          {/* Botón central de reserva solo para clientes */}
           {isClient ? (
             <div className="relative -top-6">
                <Link to="/booking" className="flex items-center justify-center h-14 w-14 rounded-full bg-gold-500 text-zinc-950 shadow-lg shadow-gold-500/30">
@@ -86,7 +82,6 @@ export const Layout: React.FC<LayoutProps> = ({ children }) => {
                </Link>
             </div>
           ) : (
-             // Espaciador para mantener layout si es barbero
              <div className="w-14" /> 
           )}
 

@@ -7,7 +7,6 @@ import { Dashboard } from './features/dashboard/Dashboard';
 import { Toaster } from './components/Toaster';
 import { useAppStore } from './store';
 
-// Protected Route Wrapper
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAppStore();
   if (!isAuthenticated) {

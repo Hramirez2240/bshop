@@ -3,8 +3,6 @@ import { persist, createJSONStorage } from 'zustand/middleware';
 import { User, Appointment, Service, AppointmentStatus, ToastMessage } from './types';
 import { addDays, format, isSameDay } from 'date-fns';
 
-// --- Mock Data Inicial ---
-
 const MOCK_SERVICES: Service[] = [
   { id: '1', name: 'Corte Clásico & Estilo', durationMinutes: 45, price: 35, description: 'Corte personalizado, lavado y peinado profesional.' },
   { id: '2', name: 'Perfilado de Barba Spa', durationMinutes: 30, price: 25, description: 'Toalla caliente, navaja y tratamiento de aceites esenciales.' },
@@ -12,7 +10,6 @@ const MOCK_SERVICES: Service[] = [
   { id: '4', name: 'Manicura Premium', durationMinutes: 40, price: 30, description: 'Limpieza, cutículas, exfoliación y esmaltado gel.' },
 ];
 
-// Usuarios iniciales (Limpiado: Solo un barbero y un cliente de demostración)
 const INITIAL_USERS: User[] = [
   { 
     id: 'b1', 
@@ -36,7 +33,7 @@ const MOCK_APPOINTMENTS: Appointment[] = [
     clientId: 'c1',
     barberId: 'b1',
     serviceId: '1',
-    date: format(addDays(new Date(), 1), 'yyyy-MM-dd'), // Mañana
+    date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     time: '10:00',
     status: 'CONFIRMED',
     clientName: 'Alex Cliente',
@@ -48,9 +45,9 @@ const MOCK_APPOINTMENTS: Appointment[] = [
     clientId: 'c1',
     barberId: 'b1',
     serviceId: '2',
-    date: format(addDays(new Date(), 2), 'yyyy-MM-dd'), // Pasado mañana
+    date: format(addDays(new Date(), 2), 'yyyy-MM-dd'),
     time: '15:30',
-    status: 'PENDING', // Cita pendiente para que el barbero pueda probar aprobar/rechazar
+    status: 'PENDING',
     clientName: 'Alex Cliente',
     serviceName: 'Perfilado de Barba Spa',
     price: 25
@@ -58,26 +55,22 @@ const MOCK_APPOINTMENTS: Appointment[] = [
 ];
 
 interface AppState {
-  // Auth State
-  users: User[]; // Lista completa de usuarios registrados
+  users: User[];
   currentUser: User | null;
   isAuthenticated: boolean;
-  login: (email: string) => boolean; // Retorna true si éxito
+  login: (email: string) => boolean;
   register: (name: string, email: string, role: User['role']) => void;
   logout: () => void;
 
-  // Data State
   services: Service[];
-  barbers: User[]; // Subconjunto de users filtrado por rol BARBER
+  barbers: User[];
   appointments: Appointment[];
 
-  // Actions
   addAppointment: (appt: Omit<Appointment, 'id' | 'status'>) => void;
   updateAppointmentStatus: (id: string, status: AppointmentStatus) => void;
   cancelAppointment: (id: string) => void;
   getAppointmentsByDate: (date: Date, barberId: string) => Appointment[];
 
-  // UI State
   toasts: ToastMessage[];
   addToast: (title: string, type: ToastMessage['type']) => void;
   removeToast: (id: string) => void;
@@ -96,7 +89,6 @@ export const useAppStore = create<AppState>()(
 
       login: (email) => {
         const { users } = get();
-        // Buscar insensible a mayúsculas/minúsculas
         const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
         
         if (user) {
@@ -118,8 +110,6 @@ export const useAppStore = create<AppState>()(
           return;
         }
 
-        // Heurística simple para avatar basado en género por nombre (termina en 'a' suele ser femenino en español)
-        // Usamos una API de avatares 3D moderna
         const isFemale = name.trim().toLowerCase().endsWith('a');
         const avatarType = isFemale ? 'girl' : 'boy';
         const avatarUrl = `https://avatar.iran.liara.run/public/${avatarType}?username=${encodeURIComponent(name)}`;
@@ -136,9 +126,8 @@ export const useAppStore = create<AppState>()(
         
         set({ 
           users: newUsersList,
-          currentUser: newUser, // Auto login al registrar
+          currentUser: newUser,
           isAuthenticated: true,
-          // Si es barbero, actualizar la lista de barberos visible
           barbers: role === 'BARBER' ? newUsersList.filter(u => u.role === 'BARBER') : get().barbers
         });
         
@@ -161,7 +150,6 @@ export const useAppStore = create<AppState>()(
       },
 
       updateAppointmentStatus: (id, status) => {
-        console.log(`Store updating: ${id} to ${status}`);
         set((state) => ({
           appointments: state.appointments.map(a => 
             a.id === id ? { ...a, status } : a
@@ -200,14 +188,13 @@ export const useAppStore = create<AppState>()(
       }
     }),
     {
-      name: 'bshop-storage', // Nombre único en LocalStorage
-      storage: createJSONStorage(() => localStorage), // Usar LocalStorage
+      name: 'bshop-storage',
+      storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
-        // Decidir qué datos guardar. No guardamos "toasts" ni estado de carga UI.
         users: state.users,
         appointments: state.appointments,
         services: state.services,
-        currentUser: state.currentUser, // Persistir sesión actual
+        currentUser: state.currentUser,
         isAuthenticated: state.isAuthenticated,
         barbers: state.barbers
       }),

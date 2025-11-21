@@ -23,10 +23,10 @@ export interface Appointment {
   clientId: string;
   barberId: string;
   serviceId: string;
-  date: string; // ISO Date string
-  time: string; // HH:mm format
+  date: string;
+  time: string;
   status: AppointmentStatus;
-  clientName?: string; // Denormalized for display convenience
+  clientName?: string;
   serviceName?: string;
   price?: number;
 }
@@ -36,7 +36,6 @@ export interface TimeSlot {
   available: boolean;
 }
 
-// UI Types
 export interface ToastMessage {
   id: string;
   title: string;

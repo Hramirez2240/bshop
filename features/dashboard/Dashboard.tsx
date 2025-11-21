@@ -15,7 +15,7 @@ const getBarberName = (barberId: string, barbers: UserType[]) => {
 const AppointmentCard: React.FC<{ 
   appt: Appointment; 
   isHistory?: boolean;
-  userRole: Role; // Usamos el rol explícito en lugar de booleanos
+  userRole: Role;
   barberName: string;
   onCancelClick: (id: string) => void;
   onConfirmClick?: (id: string) => void;
@@ -50,10 +50,7 @@ const AppointmentCard: React.FC<{
     statusColor = 'bg-red-500/10 text-red-500 border border-red-500/20';
   }
 
-  // --- LOGIC FOR BUTTON RENDERING ---
   const renderActions = () => {
-    // PRIORITY 1: Barbero con Cita Pendiente (Aprobar/Rechazar)
-    // Esto debe aparecer SIEMPRE si está pendiente, incluso si la fecha es pasada (para limpiar la cola).
     if (isBarber && isPending) {
       return (
         <div className="flex gap-3 w-full animate-fade-in">
@@ -174,22 +171,16 @@ export const Dashboard = () => {
 
   const isClient = currentUser.role === 'CLIENT';
   
-  // Filter appointments based on role
   const myAppointments = appointments
     .filter(appt => isClient ? appt.clientId === currentUser.id : appt.barberId === currentUser.id)
     .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime());
 
-  // Logic Segregation
-  
-  // FIX: PENDING appointments should ALWAYS be in the pending list, even if date is past, until resolved.
   const pending = myAppointments.filter(a => a.status === 'PENDING');
   
-  // Confirmed only shows if NOT past.
   const confirmed = myAppointments.filter(a => 
     a.status === 'CONFIRMED' && !isPast(new Date(a.date + 'T' + a.time))
   );
   
-  // History contains Past Confirmed, Cancelled, or Completed.
   const history = myAppointments.filter(a => 
     a.status === 'CANCELLED' || 
     a.status === 'COMPLETED' ||
@@ -209,7 +200,6 @@ export const Dashboard = () => {
   };
 
   const handleAcceptRequest = (id: string) => {
-    console.log("Approving appointment:", id);
     updateAppointmentStatus(id, 'CONFIRMED');
   };
 
@@ -232,7 +222,6 @@ export const Dashboard = () => {
           </p>
         </header>
 
-        {/* Pending Requests Section (Always show if there are any, prioritize for Employee) */}
         {pending.length > 0 && (
           <section className="animate-slide-up">
             <div className="flex items-center justify-between mb-4">
@@ -262,7 +251,6 @@ export const Dashboard = () => {
           </section>
         )}
 
-        {/* Confirmed / Upcoming Section */}
         <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-white">
             <Scissors className="text-gold-500" size={20} />
@@ -298,7 +286,6 @@ export const Dashboard = () => {
           </div>
         </section>
 
-        {/* History Section */}
         <section className="animate-slide-up" style={{ animationDelay: '0.2s' }}>
           <h2 className="text-xl font-semibold mb-4 text-zinc-500 flex items-center gap-2">
             <Clock size={20} /> Historial
@@ -322,7 +309,6 @@ export const Dashboard = () => {
         </section>
       </div>
 
-      {/* Cancel/Reject Confirmation Modal */}
       <Modal
         isOpen={!!appointmentToCancel}
         onClose={handleCloseModal}
