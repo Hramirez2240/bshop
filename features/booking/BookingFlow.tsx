@@ -111,19 +111,31 @@ export const BookingFlow = () => {
 
   const renderBarberStep = () => (
     <div className="grid gap-4 md:grid-cols-2">
-      {barbers.map((barber) => (
-        <Card 
-          key={barber.id} 
-          onClick={() => { setSelectedBarber(barber.id); setCurrentStep(2); }}
-          className="p-4 flex items-center gap-4 hover:bg-zinc-800/50"
-        >
-          <img src={barber.avatarUrl} alt={barber.name} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-700" />
-          <div>
-            <h3 className="font-semibold text-lg text-white">{barber.name}</h3>
-            <p className="text-sm text-gold-500 flex items-center gap-1"><Sparkles size={12}/> Estilista Senior</p>
+      {barbers.length > 0 ? (
+        barbers.map((barber) => (
+          <Card 
+            key={barber.id} 
+            onClick={() => { setSelectedBarber(barber.id); setCurrentStep(2); }}
+            className="p-4 flex items-center gap-4 hover:bg-zinc-800/50"
+          >
+            <img src={barber.avatarUrl} alt={barber.name} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-700" />
+            <div>
+              <h3 className="font-semibold text-lg text-white">{barber.name}</h3>
+              <p className="text-sm text-gold-500 flex items-center gap-1"><Sparkles size={12}/> Estilista Senior</p>
+            </div>
+          </Card>
+        ))
+      ) : (
+        <Card className="p-8 col-span-full text-center border-dashed border-zinc-800 bg-transparent flex flex-col items-center justify-center gap-4">
+          <div className="h-12 w-12 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-600">
+            <User size={24} />
+          </div>
+          <div className="space-y-1">
+            <p className="text-zinc-300 font-medium">No hay estilistas disponibles en este momento</p>
+            <p className="text-zinc-500 text-sm">Por favor, intenta más tarde</p>
           </div>
         </Card>
-      ))}
+      )}
     </div>
   );
 

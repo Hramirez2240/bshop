@@ -4,28 +4,17 @@ import { User, Appointment, Service, AppointmentStatus, ToastMessage } from './t
 import { addDays, format, isSameDay } from 'date-fns';
 
 const MOCK_SERVICES: Service[] = [
-  { id: '1', name: 'Corte Clásico & Estilo', durationMinutes: 45, price: 35, description: 'Corte personalizado, lavado y peinado profesional.' },
-  { id: '2', name: 'Perfilado de Barba Spa', durationMinutes: 30, price: 25, description: 'Toalla caliente, navaja y tratamiento de aceites esenciales.' },
-  { id: '3', name: 'Coloración & Mechas', durationMinutes: 120, price: 85, description: 'Tinte completo o mechas balayage con hidratación.' },
-  { id: '4', name: 'Manicura Premium', durationMinutes: 40, price: 30, description: 'Limpieza, cutículas, exfoliación y esmaltado gel.' },
+  { id: '1', name: 'Corte Clásico & Estilo', durationMinutes: 45, price: 1300, description: 'Corte personalizado, lavado y peinado profesional.' },
+  { id: '2', name: 'Perfilado de Barba Spa', durationMinutes: 30, price: 700, description: 'Toalla caliente, navaja y tratamiento de aceites esenciales.' },
+  { id: '3', name: 'Coloración & Mechas', durationMinutes: 120, price: 2000, description: 'Tinte completo o mechas balayage con hidratación.' },
+  { id: '4', name: 'Manicura Premium', durationMinutes: 40, price: 700, description: 'Limpieza, cutículas, exfoliación y esmaltado gel.' },
+  { id: '5', name: 'Tratamiento Capilar Intensivo', durationMinutes: 60, price: 1500, description: 'Hidratación profunda, reconstrucción y brillo para cabellos dañados.' },
+  { id: '6', name: 'Peinado & Styling', durationMinutes: 50, price: 1200, description: 'Peinado profesional con técnicas modernas para eventos especiales.' },
+  { id: '7', name: 'Limpieza & Depilación', durationMinutes: 45, price: 900, description: 'Limpieza facial profunda con máscara y depilación de cejas.' },
+  { id: '8', name: 'Corte & Afeitado Barbero Clásico', durationMinutes: 40, price: 1100, description: 'Corte completo con máquina y afeitado clásico con brocha y jabón.' },
 ];
 
-const INITIAL_USERS: User[] = [
-  { 
-    id: 'b1', 
-    name: 'Marco Rossi', 
-    email: 'marco@bshop.com', 
-    role: 'BARBER', 
-    avatarUrl: 'https://avatar.iran.liara.run/public/boy?username=Marco' 
-  },
-  { 
-    id: 'c1', 
-    name: 'Alex Cliente', 
-    email: 'alex@cliente.com', 
-    role: 'CLIENT', 
-    avatarUrl: 'https://avatar.iran.liara.run/public/boy?username=Alex' 
-  }
-];
+const USERS: User[] = [];
 
 const MOCK_APPOINTMENTS: Appointment[] = [
   {
@@ -79,11 +68,11 @@ interface AppState {
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
-      users: INITIAL_USERS,
+      users: USERS,
       currentUser: null,
       isAuthenticated: false,
       services: MOCK_SERVICES,
-      barbers: INITIAL_USERS.filter(u => u.role === 'BARBER'),
+      barbers: USERS.filter(u => u.role === 'BARBER'),
       appointments: MOCK_APPOINTMENTS,
       toasts: [],
 

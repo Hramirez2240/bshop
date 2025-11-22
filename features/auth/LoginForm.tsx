@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAppStore } from '../../store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { User, Lock, Mail, Sparkles } from 'lucide-react';
+import { User, Lock, Mail, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export const LoginForm = () => {
@@ -13,11 +13,60 @@ export const LoginForm = () => {
   const [role, setRole] = useState<'CLIENT' | 'BARBER'>('CLIENT');
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
+  const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const isValidGmail = (emailValue: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue);
+  };
+
+  const isValidPassword = (passwordValue: string) => {
+    return passwordValue.length >= 4 && /\d/.test(passwordValue);
+  };
+
+  const emailErrors = useMemo(() => {
+    if (!email) return [];
+    const errors = [];
+    if (!isValidGmail(email)) {
+      errors.push('Ingresa un correo electrónico válido');
+    }
+    return errors;
+  }, [email]);
+
+  const nameErrors = useMemo(() => {
+    if (!name) return [];
+    if (name.trim().length < 3) return ['El nombre debe tener al menos 3 caracteres'];
+    return [];
+  }, [name]);
+
+  const passwordErrors = useMemo(() => {
+    if (!password) return [];
+    const errors = [];
+    if (password.length < 4) {
+      errors.push('Mínimo 4 caracteres');
+    }
+    if (!/\d/.test(password)) {
+      errors.push('Debe contener al menos un número');
+    }
+    return errors;
+  }, [password]);
+
+  const isRegisterValid = isRegisterMode && 
+    name.trim().length > 0 && 
+    nameErrors.length === 0 &&
+    emailErrors.length === 0 && 
+    passwordErrors.length === 0;
+
+  const isLoginValid = !isRegisterMode && 
+    emailErrors.length === 0 && 
+    email.length > 0 &&
+    password.length > 0;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) return;
+    
+    if (isRegisterMode && !isRegisterValid) return;
+    if (!isRegisterMode && !isLoginValid) return;
 
     setIsLoading(true);
     
@@ -25,10 +74,6 @@ export const LoginForm = () => {
       let success = false;
       
       if (isRegisterMode) {
-        if (!name) {
-          setIsLoading(false);
-          return;
-        }
         register(name, email, role);
         success = true;
       } else {
@@ -46,6 +91,29 @@ export const LoginForm = () => {
   const toggleMode = () => {
     setIsRegisterMode(!isRegisterMode);
     setName('');
+    setPassword('');
+  };
+
+  const FieldError = ({ errors }: { errors: string[] }) => {
+    if (errors.length === 0) return null;
+    return (
+      <div className="mt-2 space-y-1">
+        {errors.map((error, idx) => (
+          <p key={idx} className="text-xs text-red-400 flex items-center gap-1">
+            <AlertCircle size={12} /> {error}
+          </p>
+        ))}
+      </div>
+    );
+  };
+
+  const FieldSuccess = ({ show }: { show: boolean }) => {
+    if (!show) return null;
+    return (
+      <p className="mt-1 text-xs text-emerald-400 flex items-center gap-1">
+        <CheckCircle size={12} /> Correcto
+      </p>
+    );
   };
 
   return (
@@ -94,10 +162,17 @@ export const LoginForm = () => {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Tu nombre"
-                  required={isRegisterMode}
-                  className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none transition-all"
+                  className={`w-full bg-zinc-950 border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none transition-all ${
+                    name && nameErrors.length === 0 
+                      ? 'border-emerald-500/50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500' 
+                      : nameErrors.length > 0
+                      ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                      : 'border-zinc-800 focus:border-gold-500 focus:ring-1 focus:ring-gold-500'
+                  }`}
                 />
               </div>
+              <FieldError errors={nameErrors} />
+              <FieldSuccess show={name && nameErrors.length === 0} />
             </div>
           )}
 
@@ -110,10 +185,17 @@ export const LoginForm = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="nombre@ejemplo.com"
-                required
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none transition-all"
+                className={`w-full bg-zinc-950 border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none transition-all ${
+                  email && emailErrors.length === 0 
+                    ? 'border-emerald-500/50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500' 
+                    : emailErrors.length > 0
+                    ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                    : 'border-zinc-800 focus:border-gold-500 focus:ring-1 focus:ring-gold-500'
+                }`}
               />
             </div>
+            <FieldError errors={emailErrors} />
+            <FieldSuccess show={email && emailErrors.length === 0} />
           </div>
 
           <div>
@@ -122,13 +204,35 @@ export const LoginForm = () => {
               <Lock className="absolute left-3 top-3 text-zinc-500" size={18} />
               <input 
                 type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-xl py-2.5 pl-10 pr-4 text-white focus:border-gold-500 focus:ring-1 focus:ring-gold-500 outline-none transition-all"
+                className={`w-full bg-zinc-950 border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none transition-all ${
+                  password && passwordErrors.length === 0 
+                    ? 'border-emerald-500/50 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500' 
+                    : passwordErrors.length > 0
+                    ? 'border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500'
+                    : 'border-zinc-800 focus:border-gold-500 focus:ring-1 focus:ring-gold-500'
+                }`}
               />
             </div>
+            {isRegisterMode && (
+              <>
+                <FieldError errors={passwordErrors} />
+                <FieldSuccess show={password && passwordErrors.length === 0} />
+              </>
+            )}
+            {!isRegisterMode && password && (
+              <p className="mt-1 text-xs text-zinc-400">Contraseña ingresada</p>
+            )}
           </div>
 
-          <Button type="submit" fullWidth isLoading={isLoading}>
+          <Button 
+            type="submit" 
+            fullWidth 
+            isLoading={isLoading}
+            disabled={isRegisterMode ? !isRegisterValid : !isLoginValid}
+          >
             {isRegisterMode 
               ? `Registrarse como ${role === 'CLIENT' ? 'Cliente' : 'Estilista'}`
               : 'Iniciar Sesión'}
@@ -148,13 +252,6 @@ export const LoginForm = () => {
           </div>
         </form>
       </Card>
-      
-      {!isRegisterMode && (
-        <div className="fixed bottom-4 text-xs text-zinc-600 text-center px-4">
-          <p>Cuentas demo pre-cargadas:</p>
-          <p>Cliente: alex@cliente.com | Estilista: marco@bshop.com</p>
-        </div>
-      )}
     </div>
   );
 };
