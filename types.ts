@@ -14,6 +14,7 @@ export interface Service {
   durationMinutes: number;
   price: number;
   description: string;
+  imageUrl?: string;
 }
 
 export type AppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED';

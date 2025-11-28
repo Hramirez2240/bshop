@@ -11,8 +11,8 @@ const STEPS = ['Servicio', 'Profesional', 'Fecha y Hora', 'Confirmar'];
 
 export const BookingFlow = () => {
   const navigate = useNavigate();
-  const { services, barbers, addAppointment, getAppointmentsByDate, currentUser, addToast } = useAppStore();
-  
+  const { services, barbers, addAppointment, getAppointmentsByDate, currentUser, addToast, appointments } = useAppStore();
+
   useEffect(() => {
     if (currentUser && currentUser.role === 'BARBER') {
       addToast('Los estilistas no pueden crear reservas desde esta cuenta.', 'error');
@@ -23,7 +23,7 @@ export const BookingFlow = () => {
   const [currentStep, setCurrentStep] = useState(0);
   const [selectedService, setSelectedService] = useState<string | null>(null);
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
-  
+
   const getStartOfToday = () => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -40,38 +40,93 @@ export const BookingFlow = () => {
   }, []);
 
   const availableSlots = useMemo(() => {
-    if (!selectedBarber || !selectedDate) return [];
+    if (!selectedBarber || !selectedDate || !selectedService) return [];
 
-    const takenAppts = getAppointmentsByDate(selectedDate, selectedBarber);
-    const takenTimes = new Set(takenAppts.map(a => a.time));
+    const serviceDuration = services.find(s => s.id === selectedService)?.durationMinutes || 30;
+
+    // Get appointments for the selected barber
+    const barberAppts = getAppointmentsByDate(selectedDate, selectedBarber);
+
+    // Helper to parse time string "HH:mm" to minutes from midnight
+    const timeToMinutes = (timeStr: string) => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + minutes;
+    };
+
+    // Helper to check overlap
+    const isOverlapping = (start1: number, end1: number, start2: number, end2: number) => {
+      return Math.max(start1, start2) < Math.min(end1, end2);
+    };
 
     const slots = [];
-    const currentTime = new Date(selectedDate);
-    currentTime.setHours(SHOP_OPEN_HOUR, 0, 0, 0);
-    
-    const endTime = new Date(selectedDate);
-    endTime.setHours(SHOP_CLOSE_HOUR, 0, 0, 0);
+    const openTime = SHOP_OPEN_HOUR * 60;
+    const closeTime = SHOP_CLOSE_HOUR * 60;
 
-    while (currentTime < endTime) {
-      const timeString = format(currentTime, 'HH:mm');
+    // 1. Barber's existing appointments
+    const barberBusySlots = barberAppts.map(appt => {
+      const apptService = services.find(s => s.id === appt.serviceId);
+      const duration = apptService?.durationMinutes || 30;
+      const start = timeToMinutes(appt.time);
+      return { start, end: start + duration };
+    });
+
+    // 2. Client's existing appointments
+    const clientBusySlots = currentUser ? appointments
+      .filter(a => a.clientId === currentUser.id && isSameDay(new Date(a.date), selectedDate) && a.status !== 'CANCELLED')
+      .map(appt => {
+        const apptService = services.find(s => s.id === appt.serviceId);
+        const duration = apptService?.durationMinutes || 30;
+        const start = timeToMinutes(appt.time);
+        return { start, end: start + duration };
+      }) : [];
+
+    let currentStepTime = openTime;
+
+    while (currentStepTime + serviceDuration <= closeTime) {
+      const timeString = `${Math.floor(currentStepTime / 60).toString().padStart(2, '0')}:${(currentStepTime % 60).toString().padStart(2, '0')}`;
+
+      const slotStart = currentStepTime;
+      const slotEnd = currentStepTime + serviceDuration;
+
+      let isAvailable = true;
+
+      // Check barber overlap
+      for (const busy of barberBusySlots) {
+        if (isOverlapping(slotStart, slotEnd, busy.start, busy.end)) {
+          isAvailable = false;
+          break;
+        }
+      }
+
+      // Check client overlap
+      if (isAvailable) {
+        for (const busy of clientBusySlots) {
+          if (isOverlapping(slotStart, slotEnd, busy.start, busy.end)) {
+            isAvailable = false;
+            break;
+          }
+        }
+      }
+
       slots.push({
         time: timeString,
-        available: !takenTimes.has(timeString)
+        available: isAvailable
       });
-      currentTime.setTime(currentTime.getTime() + TIME_SLOT_INTERVAL * 60000);
+
+      currentStepTime += TIME_SLOT_INTERVAL;
     }
     return slots;
-  }, [selectedDate, selectedBarber, getAppointmentsByDate]);
+  }, [selectedDate, selectedBarber, selectedService, getAppointmentsByDate, services, appointments, currentUser]);
 
   const handleConfirm = () => {
     if (!currentUser || !selectedService || !selectedBarber || !selectedTime) return;
-    
+
     setIsProcessing(true);
-    
+
     // Simulate API call
     setTimeout(() => {
       const serviceDetails = services.find(s => s.id === selectedService);
-      
+
       addAppointment({
         clientId: currentUser.id,
         barberId: selectedBarber,
@@ -90,19 +145,30 @@ export const BookingFlow = () => {
   const renderServiceStep = () => (
     <div className="grid gap-4 md:grid-cols-2">
       {services.map((service) => (
-        <Card 
-          key={service.id} 
+        <Card
+          key={service.id}
           onClick={() => { setSelectedService(service.id); setCurrentStep(1); }}
-          className={`p-6 transition-all ${selectedService === service.id ? 'ring-2 ring-gold-500 bg-zinc-800' : 'hover:bg-zinc-800/50'}`}
+          className={`group relative overflow-hidden p-0 transition-all border-0 ${selectedService === service.id ? 'ring-2 ring-gold-500' : 'hover:ring-1 hover:ring-zinc-700'}`}
         >
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-semibold text-lg">{service.name}</h3>
-            <span className="text-gold-500 font-bold">${service.price}</span>
+          <div className="absolute inset-0">
+            <img
+              src={service.imageUrl || '/images/services/default.jpg'}
+              alt={service.name}
+              className="w-full h-full object-cover opacity-40 group-hover:opacity-50 transition-opacity"
+            />
+            <div className={`absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/80 to-transparent ${selectedService === service.id ? 'opacity-90' : 'opacity-80'}`} />
           </div>
-          <p className="text-sm text-zinc-400 mb-4">{service.description}</p>
-          <div className="flex items-center text-xs text-zinc-500 bg-zinc-900/50 py-1 px-2 rounded w-fit">
-            <Clock size={12} className="mr-1" />
-            {service.durationMinutes} min
+
+          <div className="relative p-6 h-full flex flex-col">
+            <div className="flex justify-between items-start mb-2">
+              <h3 className="font-semibold text-lg text-white group-hover:text-gold-500 transition-colors">{service.name}</h3>
+              <span className="text-gold-500 font-bold bg-zinc-950/50 px-2 py-1 rounded backdrop-blur-sm">${service.price}</span>
+            </div>
+            <p className="text-sm text-zinc-300 mb-4 flex-grow">{service.description}</p>
+            <div className="flex items-center text-xs text-zinc-300 bg-zinc-900/80 py-1.5 px-3 rounded-full w-fit backdrop-blur-sm border border-zinc-800">
+              <Clock size={12} className="mr-1.5 text-gold-500" />
+              {service.durationMinutes} min
+            </div>
           </div>
         </Card>
       ))}
@@ -113,15 +179,15 @@ export const BookingFlow = () => {
     <div className="grid gap-4 md:grid-cols-2">
       {barbers.length > 0 ? (
         barbers.map((barber) => (
-          <Card 
-            key={barber.id} 
+          <Card
+            key={barber.id}
             onClick={() => { setSelectedBarber(barber.id); setCurrentStep(2); }}
             className="p-4 flex items-center gap-4 hover:bg-zinc-800/50"
           >
             <img src={barber.avatarUrl} alt={barber.name} className="w-16 h-16 rounded-full object-cover border-2 border-zinc-700" />
             <div>
               <h3 className="font-semibold text-lg text-white">{barber.name}</h3>
-              <p className="text-sm text-gold-500 flex items-center gap-1"><Sparkles size={12}/> Estilista Senior</p>
+              <p className="text-sm text-gold-500 flex items-center gap-1"><Sparkles size={12} /> Estilista Senior</p>
             </div>
           </Card>
         ))
@@ -152,8 +218,8 @@ export const BookingFlow = () => {
                 onClick={() => setSelectedDate(date)}
                 className={`
                   flex-shrink-0 flex flex-col items-center justify-center w-16 h-20 rounded-xl border transition-all
-                  ${isSelected 
-                    ? 'bg-gold-500 text-zinc-950 border-gold-500 font-bold shadow-lg shadow-gold-500/20' 
+                  ${isSelected
+                    ? 'bg-gold-500 text-zinc-950 border-gold-500 font-bold shadow-lg shadow-gold-500/20'
                     : 'bg-zinc-900 border-zinc-800 text-zinc-400 hover:border-zinc-600'}
                 `}
               >
@@ -176,8 +242,8 @@ export const BookingFlow = () => {
               className={`
                 py-3 px-2 rounded-lg text-sm font-medium border transition-all
                 ${!slot.available ? 'opacity-30 cursor-not-allowed bg-zinc-900 border-zinc-800 decoration-zinc-500 line-through' : ''}
-                ${selectedTime === slot.time 
-                  ? 'bg-zinc-100 text-zinc-950 border-zinc-100' 
+                ${selectedTime === slot.time
+                  ? 'bg-zinc-100 text-zinc-950 border-zinc-100'
                   : 'bg-zinc-900/50 border-zinc-800 hover:border-zinc-600 text-zinc-200'}
               `}
             >
@@ -187,8 +253,8 @@ export const BookingFlow = () => {
         </div>
       </div>
 
-      <Button 
-        className="w-full mt-4" 
+      <Button
+        className="w-full mt-4"
         disabled={!selectedTime}
         onClick={() => setCurrentStep(3)}
       >
@@ -208,7 +274,7 @@ export const BookingFlow = () => {
             <h2 className="text-2xl font-bold text-gold-500 mb-1">Resumen de Cita</h2>
             <p className="text-zinc-400">Por favor revisa los detalles</p>
           </div>
-          
+
           <div className="space-y-4">
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -221,7 +287,7 @@ export const BookingFlow = () => {
             </div>
 
             <div className="flex justify-between items-center">
-               <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3">
                 <User className="text-zinc-500" size={20} />
                 <div>
                   <p className="text-sm text-zinc-400">Profesional</p>
@@ -253,21 +319,21 @@ export const BookingFlow = () => {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-8">
-        <button 
+        <button
           onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
           disabled={currentStep === 0}
           className={`flex items-center text-sm mb-4 ${currentStep === 0 ? 'opacity-0' : 'text-zinc-400 hover:text-white'}`}
         >
           <ChevronLeft size={16} className="mr-1" /> Volver
         </button>
-        
+
         <div className="flex items-center justify-between mb-2">
           <h1 className="text-2xl font-bold">{STEPS[currentStep]}</h1>
           <span className="text-sm text-zinc-500">Paso {currentStep + 1} de 4</span>
         </div>
-        
+
         <div className="h-1 w-full bg-zinc-800 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-gold-500 transition-all duration-500 ease-out"
             style={{ width: `${((currentStep + 1) / 4) * 100}%` }}
           />

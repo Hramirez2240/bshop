@@ -4,6 +4,7 @@ import { Layout } from './components/Layout';
 import { LoginForm } from './features/auth/LoginForm';
 import { BookingFlow } from './features/booking/BookingFlow';
 import { Dashboard } from './features/dashboard/Dashboard';
+import { Home } from './features/home/Home';
 import { Toaster } from './components/Toaster';
 import { useAppStore } from './store';
 
@@ -40,7 +41,7 @@ const App = () => {
             } 
           />
           
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          <Route path="/" element={<Home />} />
         </Routes>
       </Layout>
       <Toaster />

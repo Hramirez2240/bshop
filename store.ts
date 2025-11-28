@@ -4,14 +4,14 @@ import { User, Appointment, Service, AppointmentStatus, ToastMessage } from './t
 import { addDays, format, isSameDay } from 'date-fns';
 
 const MOCK_SERVICES: Service[] = [
-  { id: '1', name: 'Corte Clásico & Estilo', durationMinutes: 45, price: 1300, description: 'Corte personalizado, lavado y peinado profesional.' },
-  { id: '2', name: 'Perfilado de Barba Spa', durationMinutes: 30, price: 700, description: 'Toalla caliente, navaja y tratamiento de aceites esenciales.' },
-  { id: '3', name: 'Coloración & Mechas', durationMinutes: 120, price: 2000, description: 'Tinte completo o mechas balayage con hidratación.' },
-  { id: '4', name: 'Manicura Premium', durationMinutes: 40, price: 700, description: 'Limpieza, cutículas, exfoliación y esmaltado gel.' },
-  { id: '5', name: 'Tratamiento Capilar Intensivo', durationMinutes: 60, price: 1500, description: 'Hidratación profunda, reconstrucción y brillo para cabellos dañados.' },
-  { id: '6', name: 'Peinado & Styling', durationMinutes: 50, price: 1200, description: 'Peinado profesional con técnicas modernas para eventos especiales.' },
-  { id: '7', name: 'Limpieza & Depilación', durationMinutes: 45, price: 900, description: 'Limpieza facial profunda con máscara y depilación de cejas.' },
-  { id: '8', name: 'Corte & Afeitado Barbero Clásico', durationMinutes: 40, price: 1100, description: 'Corte completo con máquina y afeitado clásico con brocha y jabón.' },
+  { id: '1', name: 'Corte Clásico & Estilo', durationMinutes: 45, price: 1300, description: 'Corte personalizado, lavado y peinado profesional.', imageUrl: '/images/services/classic-cut.png' },
+  { id: '2', name: 'Perfilado de Barba Spa', durationMinutes: 30, price: 700, description: 'Toalla caliente, navaja y tratamiento de aceites esenciales.', imageUrl: '/images/services/beard-grooming.png' },
+  { id: '3', name: 'Coloración & Mechas', durationMinutes: 120, price: 2000, description: 'Tinte completo o mechas balayage con hidratación.', imageUrl: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=400&h=300&fit=crop' },
+  { id: '4', name: 'Manicura Premium', durationMinutes: 40, price: 700, description: 'Limpieza, cutículas, exfoliación y esmaltado gel.', imageUrl: 'https://images.unsplash.com/photo-1604654894610-df63bc536371?w=400&h=300&fit=crop' },
+  { id: '5', name: 'Tratamiento Capilar Intensivo', durationMinutes: 60, price: 1500, description: 'Hidratación profunda, reconstrucción y brillo para cabellos dañados.', imageUrl: 'https://images.unsplash.com/photo-1562322140-8baeececf3df?w=400&h=300&fit=crop' },
+  { id: '6', name: 'Peinado & Styling', durationMinutes: 50, price: 1200, description: 'Peinado profesional con técnicas modernas para eventos especiales.', imageUrl: 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=400&h=300&fit=crop' },
+  { id: '7', name: 'Limpieza & Depilación', durationMinutes: 45, price: 900, description: 'Limpieza facial profunda con máscara y depilación de cejas.', imageUrl: 'https://images.unsplash.com/photo-1570172619644-dfd03ed5d881?w=400&h=300&fit=crop' },
+  { id: '8', name: 'Corte & Afeitado Barbero Clásico', durationMinutes: 40, price: 1100, description: 'Corte completo con máquina y afeitado clásico con brocha y jabón.', imageUrl: 'https://images.unsplash.com/photo-1503951914875-452162b0f3f1?w=400&h=300&fit=crop' },
 ];
 
 const USERS: User[] = [];
@@ -79,7 +79,7 @@ export const useAppStore = create<AppState>()(
       login: (email) => {
         const { users } = get();
         const user = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
+
         if (user) {
           set({ currentUser: user, isAuthenticated: true });
           get().addToast(`Bienvenido de nuevo, ${user.name}`, 'success');
@@ -112,14 +112,14 @@ export const useAppStore = create<AppState>()(
         };
 
         const newUsersList = [...users, newUser];
-        
-        set({ 
+
+        set({
           users: newUsersList,
           currentUser: newUser,
           isAuthenticated: true,
           barbers: role === 'BARBER' ? newUsersList.filter(u => u.role === 'BARBER') : get().barbers
         });
-        
+
         get().addToast(`Cuenta creada con éxito. ¡Hola ${name}!`, 'success');
       },
 
@@ -140,7 +140,7 @@ export const useAppStore = create<AppState>()(
 
       updateAppointmentStatus: (id, status) => {
         set((state) => ({
-          appointments: state.appointments.map(a => 
+          appointments: state.appointments.map(a =>
             a.id === id ? { ...a, status } : a
           )
         }));
@@ -150,7 +150,7 @@ export const useAppStore = create<AppState>()(
 
       cancelAppointment: (id) => {
         set((state) => ({
-          appointments: state.appointments.map(a => 
+          appointments: state.appointments.map(a =>
             a.id === id ? { ...a, status: 'CANCELLED' } : a
           )
         }));
@@ -159,9 +159,9 @@ export const useAppStore = create<AppState>()(
 
       getAppointmentsByDate: (date, barberId) => {
         const { appointments } = get();
-        return appointments.filter(a => 
-          isSameDay(new Date(a.date), date) && 
-          a.barberId === barberId && 
+        return appointments.filter(a =>
+          isSameDay(new Date(a.date), date) &&
+          a.barberId === barberId &&
           a.status !== 'CANCELLED'
         );
       },
@@ -179,7 +179,7 @@ export const useAppStore = create<AppState>()(
     {
       name: 'bshop-storage',
       storage: createJSONStorage(() => localStorage),
-      partialize: (state) => ({ 
+      partialize: (state) => ({
         users: state.users,
         appointments: state.appointments,
         services: state.services,
