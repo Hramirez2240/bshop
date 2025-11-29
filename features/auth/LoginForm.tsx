@@ -1,13 +1,14 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
 import { User, Lock, Mail, Sparkles, AlertCircle, CheckCircle } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export const LoginForm = () => {
   const { login, register } = useAppStore();
   const navigate = useNavigate();
+  const location = useLocation();
   
   const [isRegisterMode, setIsRegisterMode] = useState(false);
   const [role, setRole] = useState<'CLIENT' | 'BARBER'>('CLIENT');
@@ -15,6 +16,13 @@ export const LoginForm = () => {
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('register') === 'true') {
+      setIsRegisterMode(true);
+    }
+  }, [location.search]);
 
   const isValidGmail = (emailValue: string) => {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue);

@@ -6,6 +6,7 @@ export interface User {
   email: string;
   role: Role;
   avatarUrl?: string;
+  debt?: number;
 }
 
 export interface Service {
@@ -30,6 +31,7 @@ export interface Appointment {
   clientName?: string;
   serviceName?: string;
   price?: number;
+  cancellationPenalty?: number;
 }
 
 export interface TimeSlot {

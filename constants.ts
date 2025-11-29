@@ -1,6 +1,7 @@
 export const SHOP_OPEN_HOUR = 9;
 export const SHOP_CLOSE_HOUR = 18;
 export const TIME_SLOT_INTERVAL = 30;
+export const SANTO_DOMINGO_TIMEZONE_OFFSET = -4;
 
 export const ROUTES = {
   HOME: '/',

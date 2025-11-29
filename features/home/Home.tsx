@@ -62,7 +62,7 @@ export const Home: React.FC = () => {
                             Iniciar Sesión
                         </Link>
                         <Link
-                            to="/login"
+                            to="/login?register=true"
                             className="px-8 py-4 bg-zinc-800/80 hover:bg-zinc-700 text-white font-bold rounded-lg transition-all transform hover:scale-105 backdrop-blur-sm border border-zinc-700"
                         >
                             Registrarse

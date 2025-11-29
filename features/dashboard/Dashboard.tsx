@@ -1,13 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { Card } from '../../components/ui/Card';
 import { Appointment, User as UserType, Role } from '../../types';
-import { format, isPast } from 'date-fns';
+import { format, isPast, parseISO } from 'date-fns';
 import { Calendar, Clock, Scissors, User, AlertTriangle, FileText, Check, X, Hourglass, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Button } from '../../components/ui/Button';
 import { Modal } from '../../components/ui/Modal';
+import { SANTO_DOMINGO_TIMEZONE_OFFSET } from '../../constants';
 
-// Helper to resolve names efficiently
 const getBarberName = (barberId: string, barbers: UserType[]) => {
   return barbers.find(b => b.id === barberId)?.name || 'Estilista';
 };
@@ -110,10 +110,10 @@ const AppointmentCard: React.FC<{
       return (
         <Button 
           variant="danger" 
-          className="w-full text-xs py-2 h-10 opacity-80 hover:opacity-100 bg-zinc-800 hover:bg-red-900/30 border-zinc-700"
+          className="w-full text-xs py-2 h-10 bg-red-600 hover:bg-red-500 text-white"
           onClick={() => onCancelClick(appt.id)}
         >
-          Cancelar Cita
+          ✕ Cancelar Cita
         </Button>
       );
     }
@@ -145,13 +145,28 @@ const AppointmentCard: React.FC<{
       <div className="flex items-center gap-4 text-sm text-zinc-300">
         <div className="flex items-center gap-1.5 bg-zinc-950/50 px-2 py-1 rounded">
           <Calendar size={14} className="text-gold-500" />
-          {format(new Date(appt.date), 'd MMM, yyyy')}
+          {format(parseISO(appt.date), 'd MMM, yyyy')}
         </div>
         <div className="flex items-center gap-1.5 bg-zinc-950/50 px-2 py-1 rounded">
           <Clock size={14} className="text-gold-500" />
           {appt.time}
         </div>
+        {appt.price && (
+          <div className="flex items-center gap-1.5 bg-zinc-950/50 px-2 py-1 rounded ml-auto">
+            <Scissors size={14} className="text-gold-500" />
+            ${appt.price}
+          </div>
+        )}
       </div>
+
+      {appt.status === 'CANCELLED' && appt.cancellationPenalty && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded px-3 py-2 text-sm">
+          <p className="text-red-400 font-semibold">Penalidad por cancelación</p>
+          <p className="text-red-300 text-xs mt-1">
+            {appt.price && appt.cancellationPenalty / appt.price >= 0.55 ? '60%' : '50%'} del servicio: ${appt.cancellationPenalty.toFixed(2)}
+          </p>
+        </div>
+      )}
 
       {/* Actions Area - Always at bottom */}
       <div className="pt-4 border-t border-zinc-800/50 mt-auto">
@@ -169,23 +184,50 @@ export const Dashboard = () => {
 
   if (!currentUser) return null;
 
+  const getAppointmentDateTime = (appt: Appointment) => {
+    try {
+      return parseISO(appt.date + 'T' + appt.time);
+    } catch {
+      const [year, month, day] = appt.date.split('-').map(Number);
+      const [hours, minutes] = appt.time.split(':').map(Number);
+      return new Date(year, month - 1, day, hours, minutes);
+    }
+  };
+
+  const getCurrentTimeSantoDomingo = () => {
+    const now = new Date();
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const sdTime = new Date(utcTime + (SANTO_DOMINGO_TIMEZONE_OFFSET * 60 * 60 * 1000));
+    return sdTime;
+  };
+
   const isClient = currentUser.role === 'CLIENT';
   
   const myAppointments = appointments
     .filter(appt => isClient ? appt.clientId === currentUser.id : appt.barberId === currentUser.id)
-    .sort((a, b) => new Date(a.date + 'T' + a.time).getTime() - new Date(b.date + 'T' + b.time).getTime());
+    .sort((a, b) => getAppointmentDateTime(a).getTime() - getAppointmentDateTime(b).getTime());
 
   const pending = myAppointments.filter(a => a.status === 'PENDING');
   
-  const confirmed = myAppointments.filter(a => 
-    a.status === 'CONFIRMED' && !isPast(new Date(a.date + 'T' + a.time))
-  );
+  const confirmed = myAppointments.filter(a => a.status === 'CONFIRMED');
   
   const history = myAppointments.filter(a => 
-    a.status === 'CANCELLED' || 
-    a.status === 'COMPLETED' ||
-    (a.status === 'CONFIRMED' && isPast(new Date(a.date + 'T' + a.time)))
+    a.status === 'CANCELLED' || a.status === 'COMPLETED'
   );
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const nowSantoDomingo = getCurrentTimeSantoDomingo();
+      confirmed.forEach(appt => {
+        const apptTime = getAppointmentDateTime(appt);
+        if (nowSantoDomingo >= apptTime && appt.status === 'CONFIRMED') {
+          updateAppointmentStatus(appt.id, 'COMPLETED');
+        }
+      });
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(timer);
+  }, [confirmed, updateAppointmentStatus, getAppointmentDateTime, getCurrentTimeSantoDomingo]);
 
   const handleConfirmCancel = () => {
     if (appointmentToCancel) {
@@ -220,6 +262,14 @@ export const Dashboard = () => {
           <p className="text-zinc-400 mt-1">
             {isClient ? 'Aquí tienes el estado de tus reservas.' : 'Gestiona tus solicitudes y agenda.'}
           </p>
+          {isClient && currentUser.debt && currentUser.debt > 0 && (
+            <div className="mt-4 bg-red-500/10 border border-red-500/30 rounded-lg px-4 py-3">
+              <p className="text-red-300 text-sm">
+                <span className="font-semibold">Deuda pendiente:</span> ${currentUser.debt.toFixed(2)}
+              </p>
+              <p className="text-red-400 text-xs mt-1">Penalidades por cancelación de citas</p>
+            </div>
+          )}
         </header>
 
         {pending.length > 0 && (
@@ -254,7 +304,7 @@ export const Dashboard = () => {
         <section className="animate-slide-up" style={{ animationDelay: '0.1s' }}>
           <h2 className="text-xl font-semibold mb-4 flex items-center gap-2 text-white">
             <Scissors className="text-gold-500" size={20} />
-            Próximas Citas Confirmadas
+            Citas Confirmadas
           </h2>
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {confirmed.length > 0 ? (
@@ -272,7 +322,7 @@ export const Dashboard = () => {
                 <div className="h-12 w-12 rounded-full bg-zinc-900 flex items-center justify-center text-zinc-600">
                   <Calendar size={24} />
                 </div>
-                <div className="space-y-1">
+              <div className="space-y-1">
                   <p className="text-zinc-300 font-medium">No hay citas confirmadas</p>
                   <p className="text-zinc-500 text-sm">
                     {isClient 
@@ -315,19 +365,50 @@ export const Dashboard = () => {
         title={isClient ? "Cancelar Cita" : "Rechazar Solicitud"}
       >
         <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-4 bg-red-500/10 p-4 rounded-xl border border-red-500/20">
-            <div className="bg-red-500/20 p-2 rounded-full text-red-500">
-              <AlertTriangle size={24} />
+          {isClient && appointmentToCancel && (() => {
+            const appt = appointments.find(a => a.id === appointmentToCancel);
+            const penaltyRate = appt?.status === 'CONFIRMED' ? 0.6 : 0.5;
+            const penalty = appt?.price ? appt.price * penaltyRate : 0;
+            const penaltyPercent = Math.round(penaltyRate * 100);
+            return (
+              <div className="flex items-start gap-3 bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+                <div className="bg-red-500/20 p-2 rounded-full text-red-500 flex-shrink-0">
+                  <AlertTriangle size={24} />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-red-500">Penalidad por Cancelación</h4>
+                  <p className="text-sm text-red-400/80 mt-1">
+                    {appt?.status === 'CONFIRMED' 
+                      ? 'Se aplicará una penalidad del 60% por cancelar una cita confirmada.' 
+                      : 'Se aplicará una penalidad del 50% sobre el servicio.'}
+                  </p>
+                  <div className="mt-3 bg-red-500/20 px-3 py-2 rounded border border-red-500/30">
+                    <p className="text-xs text-red-400">Monto a cobrar ({penaltyPercent}%):</p>
+                    <p className="text-lg font-bold text-red-400">${penalty.toFixed(2)}</p>
+                  </div>
+                  {appt?.status === 'CONFIRMED' && (
+                    <p className="text-xs text-red-300 mt-2 italic">
+                      ⚠️ La penalidad es mayor porque tu estilista ya confirmó la cita.
+                    </p>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+          
+          {!isClient && (
+            <div className="flex items-center gap-4 bg-red-500/10 p-4 rounded-xl border border-red-500/20">
+              <div className="bg-red-500/20 p-2 rounded-full text-red-500">
+                <AlertTriangle size={24} />
+              </div>
+              <div>
+                <h4 className="font-semibold text-red-500">¿Estás seguro?</h4>
+                <p className="text-sm text-red-400/80">
+                  Esta acción rechazará la solicitud de forma permanente.
+                </p>
+              </div>
             </div>
-            <div>
-              <h4 className="font-semibold text-red-500">¿Estás seguro?</h4>
-              <p className="text-sm text-red-400/80">
-                {isClient 
-                  ? "Cancelar la solicitud/cita liberará el espacio." 
-                  : "Esta acción rechazará la solicitud de forma permanente."}
-              </p>
-            </div>
-          </div>
+          )}
           
           <div className="space-y-2">
              <label className="text-sm text-zinc-400 flex items-center gap-2">

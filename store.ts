@@ -149,20 +149,49 @@ export const useAppStore = create<AppState>()(
       },
 
       cancelAppointment: (id) => {
-        set((state) => ({
-          appointments: state.appointments.map(a =>
-            a.id === id ? { ...a, status: 'CANCELLED' } : a
-          )
-        }));
-        get().addToast('Cita cancelada', 'info');
+        set((state) => {
+          const appointment = state.appointments.find(a => a.id === id);
+          if (!appointment || !appointment.price) {
+            return {
+              appointments: state.appointments.map(a =>
+                a.id === id ? { ...a, status: 'CANCELLED' } : a
+              )
+            };
+          }
+
+          const penaltyRate = appointment.status === 'CONFIRMED' ? 0.6 : 0.5;
+          const penaltyAmount = appointment.price * penaltyRate;
+
+          const updatedUsers = state.users.map(u =>
+            u.id === appointment.clientId
+              ? { ...u, debt: (u.debt || 0) + penaltyAmount }
+              : u
+          );
+
+          return {
+            appointments: state.appointments.map(a =>
+              a.id === id ? { 
+                ...a, 
+                status: 'CANCELLED',
+                cancellationPenalty: penaltyAmount
+              } : a
+            ),
+            users: updatedUsers,
+            currentUser: state.currentUser && state.currentUser.id === appointment.clientId
+              ? { ...state.currentUser, debt: (state.currentUser.debt || 0) + penaltyAmount }
+              : state.currentUser
+          };
+        });
+        get().addToast('Cita cancelada. Se aplicó una penalidad por cancelación.', 'info');
       },
 
       getAppointmentsByDate: (date, barberId) => {
         const { appointments } = get();
+        const formattedDate = format(date, 'yyyy-MM-dd');
         return appointments.filter(a =>
-          isSameDay(new Date(a.date), date) &&
+          a.date === formattedDate &&
           a.barberId === barberId &&
-          a.status !== 'CANCELLED'
+          a.status === 'CONFIRMED'
         );
       },
 

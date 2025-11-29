@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useAppStore } from '../../store';
 import { Button } from '../../components/ui/Button';
 import { Card } from '../../components/ui/Card';
-import { format, addDays, isSameDay } from 'date-fns';
+import { format, addDays, isSameDay, startOfDay } from 'date-fns';
 import { ChevronLeft, Calendar as CalendarIcon, Clock, CheckCircle, User, Sparkles } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { SHOP_OPEN_HOUR, SHOP_CLOSE_HOUR, TIME_SLOT_INTERVAL } from '../../constants';
+import { SHOP_OPEN_HOUR, SHOP_CLOSE_HOUR, TIME_SLOT_INTERVAL, SANTO_DOMINGO_TIMEZONE_OFFSET } from '../../constants';
 
 const STEPS = ['Servicio', 'Profesional', 'Fecha y Hora', 'Confirmar'];
 
@@ -25,17 +25,27 @@ export const BookingFlow = () => {
   const [selectedBarber, setSelectedBarber] = useState<string | null>(null);
 
   const getStartOfToday = () => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
+    return startOfDay(new Date());
   };
 
-  const [selectedDate, setSelectedDate] = useState<Date>(getStartOfToday());
+  const getCurrentTimeSantoDomingo = () => {
+    const now = new Date();
+    const utcTime = now.getTime() + (now.getTimezoneOffset() * 60000);
+    const sdTime = new Date(utcTime + (SANTO_DOMINGO_TIMEZONE_OFFSET * 60 * 60 * 1000));
+    return sdTime;
+  };
+
+  const getTodaySantoDomingo = () => {
+    const sdNow = getCurrentTimeSantoDomingo();
+    return startOfDay(sdNow);
+  };
+
+  const [selectedDate, setSelectedDate] = useState<Date>(getTodaySantoDomingo());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const availableDates = useMemo(() => {
-    const today = getStartOfToday();
+    const today = getTodaySantoDomingo();
     return Array.from({ length: 14 }).map((_, i) => addDays(today, i));
   }, []);
 
@@ -44,25 +54,21 @@ export const BookingFlow = () => {
 
     const serviceDuration = services.find(s => s.id === selectedService)?.durationMinutes || 30;
 
-    // Get appointments for the selected barber
     const barberAppts = getAppointmentsByDate(selectedDate, selectedBarber);
 
-    // Helper to parse time string "HH:mm" to minutes from midnight
     const timeToMinutes = (timeStr: string) => {
       const [hours, minutes] = timeStr.split(':').map(Number);
       return hours * 60 + minutes;
     };
 
-    // Helper to check overlap
     const isOverlapping = (start1: number, end1: number, start2: number, end2: number) => {
-      return Math.max(start1, start2) < Math.min(end1, end2);
+      return start1 < end2 && start2 < end1;
     };
 
     const slots = [];
     const openTime = SHOP_OPEN_HOUR * 60;
     const closeTime = SHOP_CLOSE_HOUR * 60;
 
-    // 1. Barber's existing appointments
     const barberBusySlots = barberAppts.map(appt => {
       const apptService = services.find(s => s.id === appt.serviceId);
       const duration = apptService?.durationMinutes || 30;
@@ -70,15 +76,26 @@ export const BookingFlow = () => {
       return { start, end: start + duration };
     });
 
-    // 2. Client's existing appointments
     const clientBusySlots = currentUser ? appointments
-      .filter(a => a.clientId === currentUser.id && isSameDay(new Date(a.date), selectedDate) && a.status !== 'CANCELLED')
+      .filter(a => {
+        const formattedDate = format(new Date(a.date), 'yyyy-MM-dd');
+        const selectedDateFormatted = format(selectedDate, 'yyyy-MM-dd');
+        return a.clientId === currentUser.id && 
+        a.barberId === selectedBarber &&
+        formattedDate === selectedDateFormatted && 
+        a.status === 'CONFIRMED';
+      })
       .map(appt => {
         const apptService = services.find(s => s.id === appt.serviceId);
         const duration = apptService?.durationMinutes || 30;
         const start = timeToMinutes(appt.time);
         return { start, end: start + duration };
       }) : [];
+
+    const nowSantoDomingo = getCurrentTimeSantoDomingo();
+    const todaySantoDomingo = getTodaySantoDomingo();
+    const isToday = isSameDay(selectedDate, todaySantoDomingo);
+    const currentMinutes = isToday ? (nowSantoDomingo.getHours() * 60 + nowSantoDomingo.getMinutes()) : -1;
 
     let currentStepTime = openTime;
 
@@ -90,15 +107,19 @@ export const BookingFlow = () => {
 
       let isAvailable = true;
 
-      // Check barber overlap
-      for (const busy of barberBusySlots) {
-        if (isOverlapping(slotStart, slotEnd, busy.start, busy.end)) {
-          isAvailable = false;
-          break;
+      if (isToday && slotEnd <= currentMinutes) {
+        isAvailable = false;
+      }
+
+      if (isAvailable) {
+        for (const busy of barberBusySlots) {
+          if (isOverlapping(slotStart, slotEnd, busy.start, busy.end)) {
+            isAvailable = false;
+            break;
+          }
         }
       }
 
-      // Check client overlap
       if (isAvailable) {
         for (const busy of clientBusySlots) {
           if (isOverlapping(slotStart, slotEnd, busy.start, busy.end)) {
@@ -115,8 +136,9 @@ export const BookingFlow = () => {
 
       currentStepTime += TIME_SLOT_INTERVAL;
     }
+
     return slots;
-  }, [selectedDate, selectedBarber, selectedService, getAppointmentsByDate, services, appointments, currentUser]);
+  }, [selectedDate, selectedBarber, selectedService, getAppointmentsByDate, services, appointments, currentUser, getCurrentTimeSantoDomingo, getTodaySantoDomingo]);
 
   const handleConfirm = () => {
     if (!currentUser || !selectedService || !selectedBarber || !selectedTime) return;
